@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { ShieldCheck, Lock, User, LogIn } from 'lucide-react';
+import { Lock, User, LogIn } from 'lucide-react';
 
 const API_URL = 'https://gille3470.c35.integrator.host';
 

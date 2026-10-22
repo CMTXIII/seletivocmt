@@ -239,7 +239,15 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
             </tr>
           </thead>
           <tbody className="text-xs divide-y divide-gray-200">
-            {matriculasFiltradas.map(aluno => (
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="p-6 text-center text-gray-500">Carregando matrículas...</td>
+              </tr>
+            ) : matriculasFiltradas.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-6 text-center text-gray-500">Nenhuma matrícula encontrada.</td>
+              </tr>
+            ) : matriculasFiltradas.map(aluno => (
               <tr key={aluno.id} className="hover:bg-slate-50 transition-colors">
                 <td className="p-4 font-black text-[#cc0000]">#{aluno.id}</td>
                 <td className="p-4 font-bold text-gray-900">
