@@ -4,6 +4,43 @@ import { User, Heart, FileText, Upload, CheckCircle2, Share2, Download, ChevronR
 
 const API_URL = 'https://gille3470.c35.integrator.host';
 
+// FUNÇÃO PARA MÁSCARA DE CPF
+const maskCPF = (value: string) => {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+    .slice(0, 14);
+};
+
+// VALIDADOR DO ALGORITMO OFICIAL DO CPF (MÓDULO 11)
+const validateCPF = (cpf: string): boolean => {
+  const cleanCPF = cpf.replace(/\D/g, '');
+  if (cleanCPF.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
+
+  let sum = 0;
+  let remainder;
+
+  for (let i = 1; i <= 9; i++) {
+    sum += parseInt(cleanCPF.substring(i - 1, i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.substring(9, 10))) return false;
+
+  sum = 0;
+  for (let i = 1; i <= 10; i++) {
+    sum += parseInt(cleanCPF.substring(i - 1, i)) * (12 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.substring(10, 11))) return false;
+
+  return true;
+};
+
 interface FormData {
   responsavel_nome: string;
   responsavel_cpf: string;
@@ -53,7 +90,11 @@ export const FormInscricao: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'responsavel_cpf' || name === 'aluno_cpf') {
+      setFormData(prev => ({ ...prev, [name]: maskCPF(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,9 +119,33 @@ export const FormInscricao: React.FC = () => {
     setTimeout(() => setPixCopiado(false), 3000);
   };
 
+  const handleNextStep = () => {
+    if (step === 1) {
+      if (!validateCPF(formData.responsavel_cpf)) {
+        alert('Por favor, informe um CPF VÁLIDO para o Responsável.');
+        return;
+      }
+    }
+    if (step === 2) {
+      if (!validateCPF(formData.aluno_cpf)) {
+        alert('Por favor, informe um CPF VÁLIDO para o Aluno.');
+        return;
+      }
+    }
+    setStep(s => s + 1);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!validateCPF(formData.responsavel_cpf)) {
+      alert('CPF do Responsável é inválido.');
+      return;
+    }
+    if (!validateCPF(formData.aluno_cpf)) {
+      alert('CPF do Aluno é inválido.');
+      return;
+    }
     if (!formData.foto_aluno) {
       alert('Por favor, tire ou anexe a foto de rosto do aluno na Etapa 3.');
       return;
@@ -93,13 +158,12 @@ export const FormInscricao: React.FC = () => {
     setLoading(true);
     const data = new FormData();
 
-    // Inserção explícita dos campos de texto e booleanos
     data.append('responsavel_nome', formData.responsavel_nome);
-    data.append('responsavel_cpf', formData.responsavel_cpf);
+    data.append('responsavel_cpf', formData.responsavel_cpf.replace(/\D/g, ''));
     data.append('responsavel_endereco', formData.responsavel_endereco);
     data.append('responsavel_telefone', formData.responsavel_telefone);
     data.append('aluno_nome', formData.aluno_nome);
-    data.append('aluno_cpf', formData.aluno_cpf);
+    data.append('aluno_cpf', formData.aluno_cpf.replace(/\D/g, ''));
     data.append('data_nascimento', formData.data_nascimento);
     data.append('serie', formData.serie);
     data.append('is_pcd', String(formData.is_pcd));
@@ -107,7 +171,6 @@ export const FormInscricao: React.FC = () => {
     data.append('recebe_beneficio', String(formData.recebe_beneficio));
     data.append('nis', formData.recebe_beneficio ? formData.nis : '');
     
-    // Inserção dos arquivos com as exatas chaves esperadas no backend
     data.append('foto_aluno', formData.foto_aluno, formData.foto_aluno.name);
     data.append('comprovante_pix', formData.comprovante_pix, formData.comprovante_pix.name);
 
@@ -121,7 +184,7 @@ export const FormInscricao: React.FC = () => {
         data: new Date().toLocaleDateString('pt-BR'),
         ...formData,
       });
-      setStep(5); // Vai para a tela de Sucesso
+      setStep(5);
     } catch (error: any) {
       const msg = error.response?.data?.error || error.response?.data?.detail || 'Erro ao realizar inscrição. Tente novamente.';
       alert(msg);
@@ -140,15 +203,15 @@ export const FormInscricao: React.FC = () => {
         import('jspdf'),
       ]);
 
-      // Ignora erros de cores não suportadas do CSS/Tailwind (oklch)
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
+        backgroundColor: '#ffffff',
         onclone: (clonedDoc) => {
           const clonedEl = clonedDoc.getElementById('ficha-comprovante');
           if (clonedEl) {
-            clonedEl.style.color = '#000000';
+            clonedEl.style.color = '#0d2240';
             clonedEl.style.backgroundColor = '#ffffff';
           }
         }
@@ -180,7 +243,7 @@ export const FormInscricao: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-200 flex flex-col items-center p-2 sm:p-4 md:p-8 font-sans">
-      {/* CABEÇALHO COM COR BRANCA FORÇADA NO TÍTULO */}
+      {/* CABEÇALHO */}
       <header className="w-full max-w-3xl bg-[#002b66] text-white rounded-t-2xl shadow-2xl border-b-4 border-[#ffcc00] overflow-hidden">
         <div className="bg-[#cc0000] text-white text-center text-[10px] sm:text-xs font-black uppercase py-1 tracking-widest px-2">
           A DISCIPLINA COMO MEIO, O SABER COMO FIM.
@@ -196,7 +259,6 @@ export const FormInscricao: React.FC = () => {
             />
           </div>
           <div>
-            {/* COR BRANCA ABSOLUTA FIXADA VIA STYLE */}
             <h1 
               style={{ color: '#ffffff', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }} 
               className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-wide"
@@ -215,7 +277,7 @@ export const FormInscricao: React.FC = () => {
       <div className="w-full max-w-3xl bg-white p-4 sm:p-8 rounded-b-2xl shadow-2xl border-x border-b border-gray-300">
         {step <= 4 && (
           <>
-            {/* ETAPAS / STEPPER COM NOME 'PAGAMENTO' */}
+            {/* STEPPER */}
             <div className="grid grid-cols-4 gap-1 mb-6 border-b pb-4">
               {[
                 { stepNum: 1, label: 'Resp.' },
@@ -236,57 +298,118 @@ export const FormInscricao: React.FC = () => {
               ))}
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* ETAPA 1: RESPONSÁVEL */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* ETAPA 1 */}
               {step === 1 && (
                 <div className="space-y-4">
                   <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
                     <User className="w-5 h-5 text-[#cc0000]" /> 1. Dados do Responsável Legal
                   </h2>
                   <div>
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Nome Completo do Responsável *</label>
-                    <input type="text" name="responsavel_nome" required value={formData.responsavel_nome} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002b66] outline-none" />
+                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Nome Completo do Responsável *</label>
+                    <input 
+                      type="text" 
+                      name="responsavel_nome" 
+                      required 
+                      value={formData.responsavel_nome} 
+                      onChange={handleChange} 
+                      style={{ padding: '0.75rem 1rem' }}
+                      className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
+                    />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">CPF do Responsável *</label>
-                      <input type="text" name="responsavel_cpf" required placeholder="Apenas números" value={formData.responsavel_cpf} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002b66] outline-none" />
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">CPF do Responsável *</label>
+                      <input 
+                        type="text" 
+                        name="responsavel_cpf" 
+                        required 
+                        placeholder="000.000.000-00" 
+                        value={formData.responsavel_cpf} 
+                        onChange={handleChange} 
+                        style={{ padding: '0.75rem 1rem' }}
+                        className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Telefone (WhatsApp) *</label>
-                      <input type="text" name="responsavel_telefone" required placeholder="(99) 99999-9999" value={formData.responsavel_telefone} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002b66] outline-none" />
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5 whitespace-nowrap">Telefone (WhatsApp) *</label>
+                      <input 
+                        type="text" 
+                        name="responsavel_telefone" 
+                        required 
+                        placeholder="(99) 99999-9999" 
+                        value={formData.responsavel_telefone} 
+                        onChange={handleChange} 
+                        style={{ padding: '0.75rem 1rem' }}
+                        className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
+                      />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Endereço Completo *</label>
-                    <textarea name="responsavel_endereco" required rows={2} value={formData.responsavel_endereco} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002b66] outline-none" />
+                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Endereço Completo *</label>
+                    <textarea 
+                      name="responsavel_endereco" 
+                      required 
+                      rows={2} 
+                      value={formData.responsavel_endereco} 
+                      onChange={handleChange} 
+                      style={{ padding: '0.75rem 1rem' }}
+                      className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white resize-none" 
+                    />
                   </div>
                 </div>
               )}
 
-              {/* ETAPA 2: ALUNO */}
+              {/* ETAPA 2 */}
               {step === 2 && (
                 <div className="space-y-4">
                   <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
                     <Heart className="w-5 h-5 text-[#cc0000]" /> 2. Dados Pessoais do Aluno(a)
                   </h2>
                   <div>
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Nome Completo do Aluno(a) *</label>
-                    <input type="text" name="aluno_nome" required value={formData.aluno_nome} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002b66] outline-none" />
+                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Nome Completo do Aluno(a) *</label>
+                    <input 
+                      type="text" 
+                      name="aluno_nome" 
+                      required 
+                      value={formData.aluno_nome} 
+                      onChange={handleChange} 
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm" 
+                    />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">CPF do Aluno(a) *</label>
-                      <input type="text" name="aluno_cpf" required placeholder="Apenas números" value={formData.aluno_cpf} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002b66] outline-none" />
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">CPF do Aluno(a) *</label>
+                      <input 
+                        type="text" 
+                        name="aluno_cpf" 
+                        required 
+                        placeholder="000.000.000-00" 
+                        value={formData.aluno_cpf} 
+                        onChange={handleChange} 
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm" 
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Data de Nascimento *</label>
-                      <input type="date" name="data_nascimento" required value={formData.data_nascimento} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002b66] outline-none" />
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Data de Nascimento *</label>
+                      <input 
+                        type="date" 
+                        name="data_nascimento" 
+                        required 
+                        value={formData.data_nascimento} 
+                        onChange={handleChange} 
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm" 
+                      />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Série que irá Cursar em 2027 *</label>
-                    <select name="serie" value={formData.serie} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#002b66] outline-none font-medium">
+                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Série que irá Cursar em 2027 *</label>
+                    <select 
+                      name="serie" 
+                      value={formData.serie} 
+                      onChange={handleChange} 
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm"
+                    >
                       <option value="6º Ano - Ensino Fundamental">6º Ano do Ensino Fundamental - Anos finais</option>
                       <option value="7º Ano - Ensino Fundamental">7º Ano do Ensino Fundamental - Anos finais</option>
                       <option value="8º Ano - Ensino Fundamental">8º Ano do Ensino Fundamental - Anos finais</option>
@@ -296,37 +419,34 @@ export const FormInscricao: React.FC = () => {
                 </div>
               )}
 
-              {/* ETAPA 3: FOTO + PCD/BENEFÍCIO */}
+              {/* ETAPA 3 */}
               {step === 3 && (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
                     <Camera className="w-5 h-5 text-[#cc0000]" /> 3. Foto de Rosto do Aluno(a)
                   </h2>
 
-                  {/* UPLOAD DE FOTO COM SELFIE (OPÇÃO CÂMERA E GALERIA) */}
-                  <div className="bg-slate-50 border-2 border-dashed border-[#002b66]/30 p-4 sm:p-6 rounded-2xl text-center">
-                    <div className="flex flex-col items-center gap-3">
+                  <div className="bg-slate-50 border-2 border-dashed border-[#002b66]/30 p-6 sm:p-8 rounded-2xl text-center shadow-inner">
+                    <div className="flex flex-col items-center gap-4">
                       {fotoPreview ? (
-                        <div className="relative">
+                        <div className="relative my-2">
                           <img src={fotoPreview} alt="Preview Foto" className="w-32 h-32 object-cover rounded-full border-4 border-[#002b66] shadow-lg" />
-                          <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full absolute bottom-0 left-1/2 -translate-x-1/2">
+                          <span className="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full absolute -bottom-1 left-1/2 -translate-x-1/2 shadow">
                             Foto Carregada
                           </span>
                         </div>
                       ) : (
-                        <div className="w-20 h-20 bg-[#002b66]/10 rounded-full flex items-center justify-center text-[#002b66]">
+                        <div className="w-20 h-20 bg-[#002b66]/10 rounded-full flex items-center justify-center text-[#002b66] mb-1">
                           <Camera className="w-10 h-10" />
                         </div>
                       )}
 
-                      <div className="flex flex-col sm:flex-row gap-2 w-full max-w-md">
-                        {/* Botão Câmera/Selfie para Celulares (com fallback de arquivo) */}
+                      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md pt-2">
                         <label className="flex-1 bg-[#cc0000] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer hover:bg-red-700 transition">
                           <Camera className="w-4 h-4" /> Tirar Selfie / Câmera
                           <input type="file" accept="image/*" capture="user" onChange={handleFotoChange} className="hidden" />
                         </label>
 
-                        {/* Botão para carregar Foto Existente */}
                         <label className="flex-1 bg-[#002b66] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer hover:bg-blue-900 transition">
                           <Upload className="w-4 h-4" /> Selecionar Arquivo
                           <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
@@ -335,41 +455,43 @@ export const FormInscricao: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* PCD */}
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
+                  <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-3">
                     <p className="font-bold text-xs sm:text-sm text-gray-800">O aluno é Pessoa com Deficiência (PCD)? *</p>
-                    <div className="flex gap-6">
+                    <div className="flex flex-wrap items-center gap-6">
                       <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
-                        <input type="radio" name="pcd_radio" checked={formData.is_pcd} onChange={() => setFormData(p => ({ ...p, is_pcd: true }))} /> Sim
+                        <input type="radio" name="pcd_radio" checked={formData.is_pcd} onChange={() => setFormData(p => ({ ...p, is_pcd: true }))} className="w-4 h-4 text-[#002b66]" /> Sim
                       </label>
                       <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
-                        <input type="radio" name="pcd_radio" checked={!formData.is_pcd} onChange={() => setFormData(p => ({ ...p, is_pcd: false, tipo_deficiencia: '' }))} /> Não
+                        <input type="radio" name="pcd_radio" checked={!formData.is_pcd} onChange={() => setFormData(p => ({ ...p, is_pcd: false, tipo_deficiencia: '' }))} className="w-4 h-4 text-[#002b66]" /> Não
                       </label>
                     </div>
                     {formData.is_pcd && (
-                      <input type="text" name="tipo_deficiencia" required placeholder="Informe o tipo de deficiência" value={formData.tipo_deficiencia} onChange={handleChange} className="w-full mt-2 p-2 border rounded-lg text-sm outline-none" />
+                      <div className="pt-1">
+                        <input type="text" name="tipo_deficiencia" required placeholder="Informe o tipo de deficiência" value={formData.tipo_deficiencia} onChange={handleChange} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#002b66]" />
+                      </div>
                     )}
                   </div>
 
-                  {/* BENEFÍCIO */}
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
+                  <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-3">
                     <p className="font-bold text-xs sm:text-sm text-gray-800">O aluno recebe Benefício Social? *</p>
-                    <div className="flex gap-6">
+                    <div className="flex flex-wrap items-center gap-6">
                       <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
-                        <input type="radio" name="ben_radio" checked={formData.recebe_beneficio} onChange={() => setFormData(p => ({ ...p, recebe_beneficio: true }))} /> Sim
+                        <input type="radio" name="ben_radio" checked={formData.recebe_beneficio} onChange={() => setFormData(p => ({ ...p, recebe_beneficio: true }))} className="w-4 h-4 text-[#002b66]" /> Sim
                       </label>
                       <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
-                        <input type="radio" name="ben_radio" checked={!formData.recebe_beneficio} onChange={() => setFormData(p => ({ ...p, recebe_beneficio: false, nis: '' }))} /> Não
+                        <input type="radio" name="ben_radio" checked={!formData.recebe_beneficio} onChange={() => setFormData(p => ({ ...p, recebe_beneficio: false, nis: '' }))} className="w-4 h-4 text-[#002b66]" /> Não
                       </label>
                     </div>
                     {formData.recebe_beneficio && (
-                      <input type="text" name="nis" required placeholder="Informe o número do NIS" value={formData.nis} onChange={handleChange} className="w-full mt-2 p-2 border rounded-lg text-sm outline-none" />
+                      <div className="pt-1">
+                        <input type="text" name="nis" required placeholder="Informe o número do NIS" value={formData.nis} onChange={handleChange} className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#002b66]" />
+                      </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* ETAPA 4: TAXA DE INSCRIÇÃO & PAGAMENTO */}
+              {/* ETAPA 4 */}
               {step === 4 && (
                 <div className="space-y-5">
                   <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
@@ -408,7 +530,7 @@ export const FormInscricao: React.FC = () => {
                 </div>
               )}
 
-              {/* BOTOES DE NAVEGACAO */}
+              {/* NAVEGAÇÃO */}
               <div className="flex justify-between items-center pt-5 border-t">
                 {step > 1 && (
                   <button type="button" onClick={() => setStep(s => s - 1)} className="flex items-center gap-1 bg-gray-200 text-gray-800 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-300">
@@ -416,7 +538,7 @@ export const FormInscricao: React.FC = () => {
                   </button>
                 )}
                 {step < 4 ? (
-                  <button type="button" onClick={() => setStep(s => s + 1)} className="ml-auto flex items-center gap-1 bg-[#002b66] text-white px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-blue-900 shadow-md">
+                  <button type="button" onClick={handleNextStep} className="ml-auto flex items-center gap-1 bg-[#002b66] text-white px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-blue-900 shadow-md">
                     Próximo <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
@@ -429,27 +551,23 @@ export const FormInscricao: React.FC = () => {
           </>
         )}
 
-        {/* COMPROVANTE E FICHA DE INSCRIÇÃO PDF */}
+        {/* ETAPA 5: COMPROVANTE */}
         {step === 5 && comprovante && (
           <div className="space-y-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto" />
             <h2 className="text-xl sm:text-2xl font-black text-[#002b66]">Inscrição Concluída com Sucesso!</h2>
             <p className="text-xs sm:text-sm text-gray-600">Baixe ou compartilhe sua Ficha de Inscrição Oficial abaixo.</p>
 
-            {/* DIV DO COMPROVANTE COM CORES HEX (COMPATÍVEIS COM HTML2CANVAS) */}
             <div 
               id="ficha-comprovante" 
-              style={{ backgroundColor: '#ffffff', color: '#1e293b', borderColor: '#002b66' }}
-              className="p-4 sm:p-6 border-2 rounded-2xl text-left space-y-4 shadow"
+              style={{ backgroundColor: '#ffffff', color: '#0d2240', border: '2px solid #002b66' }}
+              className="p-5 sm:p-6 rounded-2xl text-left space-y-4 shadow-sm"
             >
-              <div 
-                style={{ borderColor: '#002b66' }} 
-                className="flex justify-between items-center border-b-2 pb-3"
-              >
+              <div style={{ borderBottom: '2px solid #002b66' }} className="flex justify-between items-center pb-3">
                 <div className="flex items-center gap-3">
                   <img src={`${import.meta.env.BASE_URL}Logo_CMT_XIII.png`} alt="Logo" className="w-12 h-12 object-contain" />
                   <div>
-                    <h3 style={{ color: '#002b66' }} className="font-black text-xs sm:text-sm">COLÉGIO MILITAR TIRADENTES XIII</h3>
+                    <h3 style={{ color: '#002b66' }} className="font-black text-xs sm:text-sm uppercase">COLÉGIO MILITAR TIRADENTES XIII</h3>
                     <p style={{ color: '#64748b' }} className="text-[10px] font-bold">COROATÁ - MARANHÃO</p>
                   </div>
                 </div>
@@ -459,24 +577,24 @@ export const FormInscricao: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ color: '#334155' }} className="grid grid-cols-2 gap-2 text-[11px] sm:text-xs">
-                <div><strong>Aluno:</strong> {comprovante.aluno_nome}</div>
-                <div><strong>CPF Aluno:</strong> {comprovante.aluno_cpf}</div>
-                <div><strong>Série Pretendida:</strong> {comprovante.serie}</div>
-                <div><strong>Responsável:</strong> {comprovante.responsavel_nome}</div>
-                <div><strong>CPF Responsável:</strong> {comprovante.responsavel_cpf}</div>
-                <div><strong>Telefone:</strong> {comprovante.responsavel_telefone}</div>
-                <div><strong>PCD:</strong> {comprovante.is_pcd ? `Sim (${comprovante.tipo_deficiencia})` : 'Não'}</div>
-                <div><strong>Benefício Social:</strong> {comprovante.recebe_beneficio ? `Sim (NIS: ${comprovante.nis})` : 'Não'}</div>
+              <div style={{ color: '#0d2240' }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                <div className="p-1 bg-slate-50 rounded"><strong>Aluno:</strong> {comprovante.aluno_nome}</div>
+                <div className="p-1 bg-slate-50 rounded"><strong>CPF Aluno:</strong> {comprovante.aluno_cpf}</div>
+                <div className="p-1 bg-slate-50 rounded"><strong>Série Pretendida:</strong> {comprovante.serie}</div>
+                <div className="p-1 bg-slate-50 rounded"><strong>Responsável:</strong> {comprovante.responsavel_nome}</div>
+                <div className="p-1 bg-slate-50 rounded"><strong>CPF Resp.:</strong> {comprovante.responsavel_cpf}</div>
+                <div className="p-1 bg-slate-50 rounded"><strong>Telefone:</strong> {comprovante.responsavel_telefone}</div>
+                <div className="p-1 bg-slate-50 rounded"><strong>PCD:</strong> {comprovante.is_pcd ? `Sim (${comprovante.tipo_deficiencia})` : 'Não'}</div>
+                <div className="p-1 bg-slate-50 rounded"><strong>Benefício Social:</strong> {comprovante.recebe_beneficio ? `Sim (NIS: ${comprovante.nis})` : 'Não'}</div>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-              <button onClick={() => handleGeneratePDF(false)} className="bg-[#002b66] text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md">
+              <button onClick={() => handleGeneratePDF(false)} className="bg-[#002b66] text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:bg-blue-900">
                 <Download className="w-4 h-4" /> Baixar Ficha PDF
               </button>
               {typeof navigator.share === 'function' && (
-                <button onClick={() => handleGeneratePDF(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md">
+                <button onClick={() => handleGeneratePDF(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:bg-emerald-700">
                   <Share2 className="w-4 h-4" /> Compartilhar
                 </button>
               )}
