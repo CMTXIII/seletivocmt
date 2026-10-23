@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Printer, Edit, Trash2, LogOut } from 'lucide-react';
+import { Search, Printer, Edit, Trash2, LogOut, FileText, Image as ImageIcon, ExternalLink } from 'lucide-react';
 
 const API_URL = 'https://gille3470.c35.integrator.host';
 
@@ -153,7 +153,7 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
           <p className="text-xs text-[#ffcc00] font-bold mt-1">Colégio Militar Tiradentes XIII - Coroatá/MA</p>
         </div>
         
-        {/* BOTÃO SAIR (VERMELHO CARMIM FORÇADO VIA STYLE) */}
+        {/* BOTÃO SAIR */}
         <button 
           onClick={onLogout} 
           style={{ backgroundColor: '#cc0000', color: '#ffffff' }}
@@ -215,7 +215,7 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
           </select>
         </div>
 
-        {/* BOTÃO IMPRIMIR PDF (VERDE ESMERALDA FORÇADO VIA STYLE) */}
+        {/* BOTÃO IMPRIMIR PDF */}
         <button 
           onClick={handlePrintRelatorio} 
           style={{ backgroundColor: '#059669', color: '#ffffff' }}
@@ -260,7 +260,7 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
                 <td className="p-4 font-medium text-gray-800">{aluno.responsavel_telefone}</td>
                 <td className="p-4 text-center">
                   <div className="flex items-center justify-center gap-2">
-                    {/* BOTÃO EDITAR (AZUL REAL FORÇADO VIA STYLE) */}
+                    {/* BOTÃO EDITAR */}
                     <button 
                       onClick={() => setEditAluno(aluno)} 
                       title="Editar Ficha"
@@ -270,7 +270,7 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
                       <Edit className="w-4 h-4" />
                     </button>
 
-                    {/* BOTÃO EXCLUIR (VERMELHO ALERTA FORÇADO VIA STYLE) */}
+                    {/* BOTÃO EXCLUIR */}
                     <button 
                       onClick={() => handleDelete(aluno.id)} 
                       title="Excluir Inscrição"
@@ -287,11 +287,12 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
         </table>
       </div>
 
-      {/* MODAL DE EDIÇÃO */}
+      {/* MODAL DE EDIÇÃO E CONFERÊNCIA DE DOCUMENTOS */}
       {editAluno && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto border-t-4 border-[#002b66]">
             <h3 className="text-base font-black text-[#002b66] border-b pb-3 mb-4">Editar Ficha de Matrícula #{editAluno.id}</h3>
+            
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
@@ -325,9 +326,71 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
                 </div>
               </div>
 
+              {/* SEÇÃO DE CONFERÊNCIA DE DOCUMENTOS ANEXADOS */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-gray-200 space-y-3 mt-2">
+                <p className="font-black text-[#002b66] uppercase text-[11px] tracking-wider border-b pb-1">Conferência de Documentos / Anexos</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  
+                  {/* COMPROVANTE PIX */}
+                  <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <p className="font-bold text-gray-800 text-xs flex items-center gap-1.5 mb-1">
+                        <FileText className="w-4 h-4 text-[#002b66]" /> Comprovante de Pagamento
+                      </p>
+                      {editAluno.recebe_beneficio ? (
+                        <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block">
+                          Isento (NIS: {editAluno.nis || 'Não informado'})
+                        </span>
+                      ) : editAluno.comprovante_pix_path ? (
+                        <p className="text-[10px] text-gray-500 truncate">Arquivo: {editAluno.comprovante_pix_path}</p>
+                      ) : (
+                        <p className="text-[10px] text-red-600 font-semibold">Nenhum comprovante anexado</p>
+                      )}
+                    </div>
+
+                    {editAluno.comprovante_pix_path && (
+                      <a 
+                        href={`${API_URL}/uploads/${editAluno.comprovante_pix_path}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="mt-2.5 bg-[#002b66] hover:bg-blue-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Visualizar Comprovante
+                      </a>
+                    )}
+                  </div>
+
+                  {/* FOTO DO ALUNO */}
+                  <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <p className="font-bold text-gray-800 text-xs flex items-center gap-1.5 mb-1">
+                        <ImageIcon className="w-4 h-4 text-[#002b66]" /> Foto de Rosto do Aluno
+                      </p>
+                      {editAluno.foto_aluno_path ? (
+                        <p className="text-[10px] text-gray-500 truncate">Arquivo: {editAluno.foto_aluno_path}</p>
+                      ) : (
+                        <p className="text-[10px] text-red-600 font-semibold">Nenhuma foto anexada</p>
+                      )}
+                    </div>
+
+                    {editAluno.foto_aluno_path && (
+                      <a 
+                        href={`${API_URL}/uploads/${editAluno.foto_aluno_path}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="mt-2.5 bg-[#002b66] hover:bg-blue-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Visualizar Foto do Aluno
+                      </a>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
               <div className="flex justify-end gap-2.5 pt-4 border-t">
-                <button type="button" onClick={() => setEditAluno(null)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-xl font-bold hover:bg-gray-300 transition">Cancelar</button>
-                <button type="submit" style={{ backgroundColor: '#059669', color: '#ffffff' }} className="px-5 py-2 rounded-xl font-bold hover:opacity-90 shadow transition border-none">Salvar Alterações</button>
+                <button type="button" onClick={() => setEditAluno(null)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-xl font-bold hover:bg-gray-300 transition cursor-pointer">Cancelar</button>
+                <button type="submit" style={{ backgroundColor: '#059669', color: '#ffffff' }} className="px-5 py-2 rounded-xl font-bold hover:opacity-90 shadow transition border-none cursor-pointer">Salvar Alterações</button>
               </div>
             </form>
           </div>
