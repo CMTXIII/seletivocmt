@@ -152,7 +152,6 @@ export const FormInscricao: React.FC = () => {
       return;
     }
 
-    // Exige comprovante do Pix apenas se NÃO for isento
     if (!formData.recebe_beneficio && !formData.comprovante_pix) {
       alert('Por favor, anexe o comprovante de pagamento da taxa na Etapa 4.');
       return;
@@ -199,7 +198,7 @@ export const FormInscricao: React.FC = () => {
     }
   };
 
-  // GERADOR DE PDF SEM O ERRO DE OKLCH
+  // GERADOR DE PDF ISOLADO (SEM INTERFERÊNCIA DE OKLCH DO TAILWIND)
   const handleGeneratePDF = async (shareMode = false) => {
     const element = document.getElementById('ficha-comprovante');
     if (!element || !comprovante) return;
@@ -215,21 +214,19 @@ export const FormInscricao: React.FC = () => {
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        ignoreElements: (element) => element.tagName === 'STYLE',
         onclone: (clonedDoc) => {
-          // Remove completamente as tags de estilo globais do clone para evitar o parse de oklch
-          const styles = clonedDoc.getElementsByTagName('style');
-          for (let i = styles.length - 1; i >= 0; i--) {
-            styles[i].parentNode?.removeChild(styles[i]);
-          }
+          // Desativa todas as tags de estilo no documento clonado para eliminar completamente a leitura de oklch()
+          const styleElements = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
+          styleElements.forEach((style) => style.remove());
 
           const clonedEl = clonedDoc.getElementById('ficha-comprovante');
           if (clonedEl) {
-            clonedEl.style.color = '#0d2240';
+            clonedEl.style.color = '#002b66';
             clonedEl.style.backgroundColor = '#ffffff';
-            clonedEl.style.width = '750px';
+            clonedEl.style.width = '700px';
             clonedEl.style.margin = '0 auto';
-            clonedEl.style.padding = '20px';
+            clonedEl.style.padding = '24px';
+            clonedEl.style.fontFamily = 'Arial, sans-serif';
             clonedEl.style.boxSizing = 'border-box';
           }
         }
@@ -255,7 +252,7 @@ export const FormInscricao: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Erro na geração do PDF:', err);
-      alert('Erro ao gerar o arquivo PDF.');
+      alert('Erro ao gerar o arquivo PDF. Tente novamente.');
     }
   };
 
@@ -346,6 +343,7 @@ export const FormInscricao: React.FC = () => {
                       <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">CPF do Responsável *</label>
                       <input 
                         type="text" 
+                        inputMode="numeric"
                         name="responsavel_cpf" 
                         required 
                         placeholder="000.000.000-00" 
@@ -358,7 +356,8 @@ export const FormInscricao: React.FC = () => {
                     <div>
                       <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5 whitespace-nowrap">Telefone (WhatsApp) *</label>
                       <input 
-                        type="text" 
+                        type="tel" 
+                        inputMode="numeric"
                         name="responsavel_telefone" 
                         required 
                         placeholder="(99) 99999-9999" 
@@ -407,6 +406,7 @@ export const FormInscricao: React.FC = () => {
                       <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">CPF do Aluno(a) *</label>
                       <input 
                         type="text" 
+                        inputMode="numeric"
                         name="aluno_cpf" 
                         required 
                         placeholder="000.000.000-00" 
@@ -551,6 +551,7 @@ export const FormInscricao: React.FC = () => {
                           <label className="block text-xs font-bold text-gray-700 mb-1">Número de Identificação Social (NIS) *</label>
                           <input 
                             type="text" 
+                            inputMode="numeric"
                             name="nis" 
                             required 
                             placeholder="Informe o NIS do CadÚnico" 

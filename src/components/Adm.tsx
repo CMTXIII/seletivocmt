@@ -142,6 +142,34 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
     }
   };
 
+  // Adicione esta função dentro do componente Adm no Adm.tsx:
+const handleDownloadFile = async (fileName: string, defaultName: string) => {
+  try {
+    const fileUrl = `${API_URL}/uploads/${fileName}`;
+    const response = await fetch(fileUrl);
+    
+    if (!response.ok) {
+      throw new Error('Arquivo não encontrado no servidor.');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Define o nome do arquivo ao baixar
+    const extension = fileName.split('.').pop() || 'jpg';
+    link.download = `${defaultName}.${extension}`;
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Erro ao baixar arquivo. Verifique se o arquivo existe no servidor.');
+  }
+};
+
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-8 font-sans">
       {/* CABEÇALHO */}
@@ -332,58 +360,56 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   
                   {/* COMPROVANTE PIX */}
-                  <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
-                    <div>
-                      <p className="font-bold text-gray-800 text-xs flex items-center gap-1.5 mb-1">
-                        <FileText className="w-4 h-4 text-[#002b66]" /> Comprovante de Pagamento
-                      </p>
-                      {editAluno.recebe_beneficio ? (
-                        <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block">
-                          Isento (NIS: {editAluno.nis || 'Não informado'})
-                        </span>
-                      ) : editAluno.comprovante_pix_path ? (
-                        <p className="text-[10px] text-gray-500 truncate">Arquivo: {editAluno.comprovante_pix_path}</p>
-                      ) : (
-                        <p className="text-[10px] text-red-600 font-semibold">Nenhum comprovante anexado</p>
+                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
+                      <div>
+                        <p className="font-bold text-gray-800 text-xs flex items-center gap-1.5 mb-1">
+                          <FileText className="w-4 h-4 text-[#002b66]" /> Comprovante de Pagamento
+                        </p>
+                        {editAluno.recebe_beneficio ? (
+                          <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block">
+                            Isento (NIS: {editAluno.nis || 'Não informado'})
+                          </span>
+                        ) : editAluno.comprovante_pix_path ? (
+                          <p className="text-[10px] text-gray-500 truncate">Arquivo: {editAluno.comprovante_pix_path}</p>
+                        ) : (
+                          <p className="text-[10px] text-red-600 font-semibold">Nenhum comprovante anexado</p>
+                        )}
+                      </div>
+
+                      {editAluno.comprovante_pix_path && (
+                        <button 
+                          type="button"
+                          onClick={() => handleDownloadFile(editAluno.comprovante_pix_path!, `Comprovante_Pix_Aluno_${editAluno.id}`)}
+                          className="mt-2.5 bg-[#002b66] hover:bg-blue-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer border-none"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Baixar Comprovante
+                        </button>
                       )}
                     </div>
 
-                    {editAluno.comprovante_pix_path && (
-                      <a 
-                        href={`${API_URL}/uploads/${editAluno.comprovante_pix_path}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="mt-2.5 bg-[#002b66] hover:bg-blue-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" /> Visualizar Comprovante
-                      </a>
-                    )}
-                  </div>
+                    {/* FOTO DO ALUNO */}
+                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
+                      <div>
+                        <p className="font-bold text-gray-800 text-xs flex items-center gap-1.5 mb-1">
+                          <ImageIcon className="w-4 h-4 text-[#002b66]" /> Foto de Rosto do Aluno
+                        </p>
+                        {editAluno.foto_aluno_path ? (
+                          <p className="text-[10px] text-gray-500 truncate">Arquivo: {editAluno.foto_aluno_path}</p>
+                        ) : (
+                          <p className="text-[10px] text-red-600 font-semibold">Nenhuma foto anexada</p>
+                        )}
+                      </div>
 
-                  {/* FOTO DO ALUNO */}
-                  <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
-                    <div>
-                      <p className="font-bold text-gray-800 text-xs flex items-center gap-1.5 mb-1">
-                        <ImageIcon className="w-4 h-4 text-[#002b66]" /> Foto de Rosto do Aluno
-                      </p>
-                      {editAluno.foto_aluno_path ? (
-                        <p className="text-[10px] text-gray-500 truncate">Arquivo: {editAluno.foto_aluno_path}</p>
-                      ) : (
-                        <p className="text-[10px] text-red-600 font-semibold">Nenhuma foto anexada</p>
+                      {editAluno.foto_aluno_path && (
+                        <button 
+                          type="button"
+                          onClick={() => handleDownloadFile(editAluno.foto_aluno_path!, `Foto_Aluno_${editAluno.id}`)}
+                          className="mt-2.5 bg-[#002b66] hover:bg-blue-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer border-none"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Baixar Foto do Aluno
+                        </button>
                       )}
                     </div>
-
-                    {editAluno.foto_aluno_path && (
-                      <a 
-                        href={`${API_URL}/uploads/${editAluno.foto_aluno_path}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="mt-2.5 bg-[#002b66] hover:bg-blue-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" /> Visualizar Foto do Aluno
-                      </a>
-                    )}
-                  </div>
 
                 </div>
               </div>
