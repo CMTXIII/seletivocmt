@@ -5,7 +5,6 @@ import { User, Heart, FileText, Upload, CheckCircle2, Share2, Download, ChevronR
 const API_URL = 'https://gille3470.c35.integrator.host';
 const CHAVE_PIX_OFICIAL = '03990767000101';
 
-// FUNÇÃO PARA MÁSCARA DE CPF
 const maskCPF = (value: string) => {
   return value
     .replace(/\D/g, '')
@@ -15,7 +14,6 @@ const maskCPF = (value: string) => {
     .slice(0, 14);
 };
 
-// VALIDADOR DO ALGORITMO OFICIAL DO CPF (MÓDULO 11)
 const validateCPF = (cpf: string): boolean => {
   const cleanCPF = cpf.replace(/\D/g, '');
   if (cleanCPF.length !== 11) return false;
@@ -53,7 +51,7 @@ interface FormData {
   serie: string;
   is_pcd: boolean;
   tipo_deficiencia: string;
-  recebe_beneficio: boolean; // Isenção de Taxa
+  recebe_beneficio: boolean;
   nis: string;
   foto_aluno: File | null;
   comprovante_pix: File | null;
@@ -198,7 +196,6 @@ export const FormInscricao: React.FC = () => {
     }
   };
 
-  // GERADOR DE PDF ISOLADO (SEM INTERFERÊNCIA DE OKLCH DO TAILWIND)
   const handleGeneratePDF = async (shareMode = false) => {
     const element = document.getElementById('ficha-comprovante');
     if (!element || !comprovante) return;
@@ -215,7 +212,7 @@ export const FormInscricao: React.FC = () => {
         logging: false,
         backgroundColor: '#ffffff',
         onclone: (clonedDoc) => {
-          // Desativa todas as tags de estilo no documento clonado para eliminar completamente a leitura de oklch()
+          // Desativa estilos externos incompatíveis
           const styleElements = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
           styleElements.forEach((style) => style.remove());
 
@@ -223,11 +220,19 @@ export const FormInscricao: React.FC = () => {
           if (clonedEl) {
             clonedEl.style.color = '#002b66';
             clonedEl.style.backgroundColor = '#ffffff';
-            clonedEl.style.width = '700px';
+            clonedEl.style.width = '650px';
             clonedEl.style.margin = '0 auto';
-            clonedEl.style.padding = '24px';
+            clonedEl.style.padding = '30px';
             clonedEl.style.fontFamily = 'Arial, sans-serif';
             clonedEl.style.boxSizing = 'border-box';
+
+            // Ajusta o tamanho fixo da imagem do logo no PDF
+            const logo = clonedEl.querySelector('img');
+            if (logo) {
+              logo.style.width = '60px';
+              logo.style.height = '60px';
+              logo.style.objectFit = 'contain';
+            }
           }
         }
       });
@@ -237,7 +242,7 @@ export const FormInscricao: React.FC = () => {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'PNG', 0, 10, pdfWidth, pdfHeight);
 
       if (shareMode && navigator.share) {
         const pdfBlob = pdf.output('blob');
@@ -303,7 +308,6 @@ export const FormInscricao: React.FC = () => {
       <div className="w-full max-w-3xl bg-white p-4 sm:p-8 rounded-b-2xl shadow-2xl border-x border-b border-gray-300">
         {step <= 4 && (
           <>
-            {/* INDICADOR DE ETAPAS */}
             <div className={`grid gap-1 mb-6 border-b pb-4 ${formData.recebe_beneficio ? 'grid-cols-3' : 'grid-cols-4'}`}>
               {stepsList.map(item => (
                 <div key={item.stepNum} className="flex flex-col items-center text-center">
@@ -320,7 +324,6 @@ export const FormInscricao: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* ETAPA 1 */}
               {step === 1 && (
                 <div className="space-y-4">
                   <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
@@ -383,7 +386,6 @@ export const FormInscricao: React.FC = () => {
                 </div>
               )}
 
-              {/* ETAPA 2 */}
               {step === 2 && (
                 <div className="space-y-4">
                   <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
@@ -447,7 +449,6 @@ export const FormInscricao: React.FC = () => {
                 </div>
               )}
 
-              {/* ETAPA 3 */}
               {step === 3 && (
                 <div className="space-y-6">
                   <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
@@ -483,7 +484,6 @@ export const FormInscricao: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* PCD */}
                   <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-3">
                     <p className="font-bold text-xs sm:text-sm text-gray-800">O aluno é Pessoa com Deficiência (PCD)? *</p>
                     <div className="flex flex-wrap items-center gap-6">
@@ -533,7 +533,6 @@ export const FormInscricao: React.FC = () => {
                     )}
                   </div>
 
-                  {/* ISENÇÃO */}
                   <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-3">
                     <p className="font-bold text-xs sm:text-sm text-gray-800">Deseja concorrer à Isenção de Inscrição? *</p>
                     <div className="flex flex-wrap items-center gap-6">
@@ -596,7 +595,6 @@ export const FormInscricao: React.FC = () => {
                 </div>
               )}
 
-              {/* ETAPA 4 */}
               {step === 4 && !formData.recebe_beneficio && (
                 <div className="space-y-5">
                   <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
@@ -635,7 +633,6 @@ export const FormInscricao: React.FC = () => {
                 </div>
               )}
 
-              {/* NAVEGAÇÃO */}
               <div className="flex justify-between items-center pt-5 border-t">
                 {step > 1 && (
                   <button type="button" onClick={() => setStep(s => s - 1)} className="flex items-center gap-1 bg-gray-200 text-gray-800 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-300">
@@ -661,7 +658,7 @@ export const FormInscricao: React.FC = () => {
           </>
         )}
 
-        {/* COMPROVANTE */}
+        {/* COMPROVANTE COM REGRAS RÍGIDAS DE DIMENSÃO E ESPAÇAMENTO */}
         {step === 5 && comprovante && (
           <div className="space-y-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto" />
@@ -671,31 +668,37 @@ export const FormInscricao: React.FC = () => {
             <div 
               id="ficha-comprovante" 
               style={{ backgroundColor: '#ffffff', color: '#0d2240', border: '2px solid #002b66' }}
-              className="p-5 sm:p-6 rounded-2xl text-left space-y-4 shadow-sm"
+              className="p-6 rounded-2xl text-left space-y-6 shadow-sm max-w-xl mx-auto"
             >
-              <div style={{ borderBottom: '2px solid #002b66' }} className="flex justify-between items-center pb-3">
+              {/* CABEÇALHO DO COMPROVANTE */}
+              <div style={{ borderBottom: '2px solid #002b66', paddingBottom: '16px' }} className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <img src={`${import.meta.env.BASE_URL}Logo_CMT_XIII.png`} alt="Logo" className="w-12 h-12 object-contain" />
+                  <img 
+                    src={`${import.meta.env.BASE_URL}Logo_CMT_XIII.png`} 
+                    alt="Logo" 
+                    style={{ width: '50px', height: '50px', objectFit: 'contain' }}
+                  />
                   <div>
-                    <h3 style={{ color: '#002b66' }} className="font-black text-xs sm:text-sm uppercase">COLÉGIO MILITAR TIRADENTES XIII</h3>
-                    <p style={{ color: '#64748b' }} className="text-[10px] font-bold">COROATÁ - MARANHÃO</p>
+                    <h3 style={{ color: '#002b66', margin: 0, padding: 0 }} className="font-black text-xs sm:text-sm uppercase">COLÉGIO MILITAR TIRADENTES XIII</h3>
+                    <p style={{ color: '#64748b', margin: 0, padding: 0 }} className="text-[10px] font-bold">COROATÁ - MARANHÃO</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span style={{ color: '#64748b' }} className="text-[10px] font-bold block">INSCRIÇÃO</span>
-                  <span style={{ color: '#cc0000' }} className="text-base sm:text-lg font-black">#{comprovante.id}</span>
+                  <span style={{ color: '#64748b', display: 'block', fontSize: '10px' }} className="font-bold">Nº INSCRIÇÃO</span>
+                  <span style={{ color: '#cc0000', fontSize: '18px', lineHeight: '22px' }} className="font-black">#{comprovante.id}</span>
                 </div>
               </div>
 
-              <div style={{ color: '#0d2240' }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
-                <div className="p-2 bg-slate-50 rounded-lg"><strong>Aluno:</strong> {comprovante.aluno_nome}</div>
-                <div className="p-2 bg-slate-50 rounded-lg"><strong>CPF Aluno:</strong> {comprovante.aluno_cpf}</div>
-                <div className="p-2 bg-slate-50 rounded-lg"><strong>Série Pretendida:</strong> {comprovante.serie}</div>
-                <div className="p-2 bg-slate-50 rounded-lg"><strong>Responsável:</strong> {comprovante.responsavel_nome}</div>
-                <div className="p-2 bg-slate-50 rounded-lg"><strong>CPF Resp.:</strong> {comprovante.responsavel_cpf}</div>
-                <div className="p-2 bg-slate-50 rounded-lg"><strong>Telefone:</strong> {comprovante.responsavel_telefone}</div>
-                <div className="p-2 bg-slate-50 rounded-lg"><strong>PCD:</strong> {comprovante.is_pcd ? `Sim (${comprovante.tipo_deficiencia})` : 'Não'}</div>
-                <div className="p-2 bg-slate-50 rounded-lg"><strong>Solicitou Isenção:</strong> {comprovante.recebe_beneficio ? `Sim (NIS: ${comprovante.nis})` : 'Não'}</div>
+              {/* DADOS DA INSCRICAO */}
+              <div style={{ color: '#0d2240' }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Aluno:</strong> {comprovante.aluno_nome}</div>
+                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>CPF Aluno:</strong> {comprovante.aluno_cpf}</div>
+                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Série Pretendida:</strong> {comprovante.serie}</div>
+                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Responsável:</strong> {comprovante.responsavel_nome}</div>
+                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>CPF Resp.:</strong> {comprovante.responsavel_cpf}</div>
+                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Telefone:</strong> {comprovante.responsavel_telefone}</div>
+                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>PCD:</strong> {comprovante.is_pcd ? `Sim (${comprovante.tipo_deficiencia})` : 'Não'}</div>
+                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Solicitou Isenção:</strong> {comprovante.recebe_beneficio ? `Sim (NIS: ${comprovante.nis})` : 'Não'}</div>
               </div>
             </div>
 
