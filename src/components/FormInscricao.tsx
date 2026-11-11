@@ -308,7 +308,7 @@ export const FormInscricao: React.FC = () => {
       <div className="w-full max-w-3xl bg-white p-4 sm:p-8 rounded-b-2xl shadow-2xl border-x border-b border-gray-300">
         {step <= 4 && (
           <>
-            <div className={`grid gap-1 mb-6 border-b pb-4 ${formData.recebe_beneficio ? 'grid-cols-3' : 'grid-cols-4'}`}>
+            <div translate="no" className={`grid gap-1 mb-6 border-b pb-4 ${formData.recebe_beneficio ? 'grid-cols-3' : 'grid-cols-4'}`}>
               {stepsList.map(item => (
                 <div key={item.stepNum} className="flex flex-col items-center text-center">
                   <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-xs sm:text-sm ${
