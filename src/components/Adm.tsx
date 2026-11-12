@@ -63,6 +63,7 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
     ano9: matriculas.filter(m => m.serie.includes('9º')).length,
   };
 
+  // IMPRESSÃO DO RELATÓRIO GERAL DA LISTA
   const handlePrintRelatorio = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -115,6 +116,91 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
     printWindow.document.write(htmlContent);
     printWindow.document.close();
     printWindow.print();
+  };
+
+  // NOVA FUNÇÃO: IMPRESSÃO INDIVIDUAL DO COMPROVANTE DE INSCRIÇÃO
+  const handlePrintComprovanteIndividual = (aluno: AlunoMatricula) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const logoUrl = `${window.location.origin}${import.meta.env.BASE_URL}Logo_CMT_XIII.png`;
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Comprovante de Inscrição #${aluno.id} - ${aluno.nome}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 30px; color: #0d2240; margin: 0; }
+            .card { border: 2px solid #002b66; border-radius: 12px; padding: 24px; max-width: 700px; margin: 0 auto; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #002b66; padding-bottom: 16px; margin-bottom: 20px; }
+            .header-left { display: flex; align-items: center; gap: 15px; }
+            .logo { width: 60px; height: 60px; object-fit: contain; }
+            .title { font-size: 16px; font-weight: bold; color: #002b66; margin: 0; text-transform: uppercase; }
+            .subtitle { font-size: 11px; color: #64748b; font-weight: bold; margin: 3px 0 0 0; }
+            .inscricao-box { text-align: right; }
+            .inscricao-label { font-size: 10px; color: #64748b; font-weight: bold; display: block; }
+            .inscricao-num { font-size: 22px; font-weight: 900; color: #cc0000; }
+            .badge-titulo { background-color: #002b66; color: #ffffff; text-align: center; padding: 6px; font-size: 12px; font-weight: bold; text-transform: uppercase; border-radius: 6px; margin-bottom: 18px; letter-spacing: 1px; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+            .field { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; font-size: 12px; }
+            .field.full { grid-column: span 2; }
+            .field strong { color: #002b66; display: inline-block; margin-right: 4px; }
+            .footer { margin-top: 25px; padding-top: 15px; border-top: 1px dashed #cbd5e1; font-size: 11px; color: #64748b; text-align: center; }
+            @media print {
+              body { padding: 0; }
+              .card { border: 2px solid #002b66; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="header">
+              <div class="header-left">
+                <img src="${logoUrl}" alt="Logo" class="logo" onerror="this.style.display='none'" />
+                <div>
+                  <h1 class="title">COLÉGIO MILITAR TIRADENTES XIII</h1>
+                  <p class="subtitle">COROATÁ - MARANHÃO</p>
+                </div>
+              </div>
+              <div class="inscricao-box">
+                <span class="inscricao-label">Nº INSCRIÇÃO</span>
+                <span class="inscricao-num">#${aluno.id}</span>
+              </div>
+            </div>
+
+            <div class="badge-titulo">COMPROVANTE OFICIAL DE INSCRIÇÃO - SELETIVO 2027</div>
+
+            <div class="grid">
+              <div class="field full"><strong>Aluno(a):</strong> ${aluno.nome}</div>
+              <div class="field"><strong>CPF do Aluno(a):</strong> ${aluno.cpf}</div>
+              <div class="field"><strong>Série Pretendida:</strong> ${aluno.serie}</div>
+              <div class="field full"><strong>Responsável Legal:</strong> ${aluno.responsavel_nome}</div>
+              <div class="field"><strong>CPF do Responsável:</strong> ${aluno.responsavel_cpf || 'Não informado'}</div>
+              <div class="field"><strong>Telefone / WhatsApp:</strong> ${aluno.responsavel_telefone}</div>
+              <div class="field full"><strong>Endereço:</strong> ${aluno.responsavel_endereco}</div>
+              <div class="field"><strong>Atendimento PCD:</strong> ${aluno.is_pcd ? `Sim (${aluno.tipo_deficiencia})` : 'Não'}</div>
+              <div class="field"><strong>Solicitou Isenção:</strong> ${aluno.recebe_beneficio ? `Sim (NIS: ${aluno.nis})` : 'Não'}</div>
+            </div>
+
+            <div class="footer">
+              Documento emitido pelo Painel Administrativo do CMT XIII em ${dataAtual}.<br/>
+              Guarde este comprovante para apresentação no dia da prova e etapas subsequentes.
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 300);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -213,7 +299,7 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
         </div>
       </div>
 
-      {/* FILTROS E AÇÃO DE IMPRESSÃO */}
+      {/* FILTROS E AÇÃO DE IMPRESSÃO GERAL */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-md mb-6 flex flex-col md:flex-row gap-3.5 justify-between items-center border border-gray-200">
         <div className="flex flex-col sm:flex-row flex-1 gap-3 w-full md:w-auto">
           <div className="relative flex-1 flex items-center">
@@ -241,7 +327,7 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
           </select>
         </div>
 
-        {/* BOTÃO IMPRIMIR PDF */}
+        {/* BOTÃO IMPRIMIR RELATÓRIO DA LISTA */}
         <button 
           onClick={handlePrintRelatorio} 
           style={{ backgroundColor: '#059669', color: '#ffffff' }}
@@ -286,6 +372,16 @@ export const Adm: React.FC<AdmProps> = ({ onLogout }) => {
                 <td className="p-4 font-medium text-gray-800">{aluno.responsavel_telefone}</td>
                 <td className="p-4 text-center">
                   <div className="flex items-center justify-center gap-2">
+                    {/* NOVO BOTÃO: IMPRIMIR COMPROVANTE INDIVIDUAL */}
+                    <button 
+                      onClick={() => handlePrintComprovanteIndividual(aluno)} 
+                      title="Imprimir Comprovante de Inscrição"
+                      style={{ backgroundColor: '#059669', color: '#ffffff' }}
+                      className="p-2.5 rounded-xl shadow-md hover:opacity-90 transition cursor-pointer border-none"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+
                     {/* BOTÃO EDITAR */}
                     <button 
                       onClick={() => setEditAluno(aluno)} 
