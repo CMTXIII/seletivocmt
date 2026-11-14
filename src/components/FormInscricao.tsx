@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { User, Heart, FileText, Upload, CheckCircle2, Share2, Download, ChevronRight, ChevronLeft, Camera, CreditCard, Copy, Check, FileCheck } from 'lucide-react';
+import { User, Heart, FileText, Upload, CheckCircle2, Share2, Download, ChevronRight, ChevronLeft, Camera, CreditCard, Copy, Check, FileCheck, Lock, CalendarX2 } from 'lucide-react';
+
+// =========================================================================
+// CONFIGURAÇÃO DO PERÍODO DE INSCRIÇÕES (ALTERE AQUI PARA REABRIR)
+// =========================================================================
+const CONFIG_INSCRICOES = {
+  // Fica aberto até o último segundo do dia 20/11/2026. A partir de 21/11/2026 00:00:00 bloqueia.
+  dataFim: '2026-11-20T23:59:59',
+  mensagemPeriodoEncerrado: 'O período de inscrições para o Seletivo 2027 encerrou-se em 20/11/2026.',
+  // Mude para true caso queira reabrir imediatamente sem mexer na data
+  forcarAbertura: false,
+};
 
 const API_URL = 'https://gille3470.c35.integrator.host';
 const CHAVE_PIX_OFICIAL = '03990767000101';
@@ -62,13 +73,27 @@ interface ComprovanteData extends FormData {
   data: string;
 }
 
-export const FormInscricao: React.FC = () => {
+interface FormInscricaoProps {
+  onOpenAdm?: () => void; // Prop opcional caso o botão ADM seja controlado pelo App.tsx
+}
+
+export const FormInscricao: React.FC<FormInscricaoProps> = ({ onOpenAdm }) => {
   const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [comprovante, setComprovante] = useState<ComprovanteData | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [pixPreview, setPixPreview] = useState<string | null>(null);
   const [pixCopiado, setPixCopiado] = useState<boolean>(false);
+
+  // VERIFICAÇÃO AUTOMÁTICA DE PRAZO
+  const isInscricaoEncerrada = () => {
+    if (CONFIG_INSCRICOES.forcarAbertura) return false;
+    const agora = new Date();
+    const limite = new Date(CONFIG_INSCRICOES.dataFim);
+    return agora > limite;
+  };
+
+  const encerrado = isInscricaoEncerrada();
 
   const [formData, setFormData] = useState<FormData>({
     responsavel_nome: '',
@@ -136,6 +161,13 @@ export const FormInscricao: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Dupla checagem de segurança caso a janela tenha ficado aberta após a meia-noite
+    if (isInscricaoEncerrada()) {
+      alert('O prazo de inscrições encerrou!');
+      window.location.reload();
+      return;
+    }
 
     if (!validateCPF(formData.responsavel_cpf)) {
       alert('CPF do Responsável é inválido.');
@@ -212,7 +244,6 @@ export const FormInscricao: React.FC = () => {
         logging: false,
         backgroundColor: '#ffffff',
         onclone: (clonedDoc) => {
-          // Desativa estilos externos incompatíveis
           const styleElements = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
           styleElements.forEach((style) => style.remove());
 
@@ -226,7 +257,6 @@ export const FormInscricao: React.FC = () => {
             clonedEl.style.fontFamily = 'Arial, sans-serif';
             clonedEl.style.boxSizing = 'border-box';
 
-            // Ajusta o tamanho fixo da imagem do logo no PDF
             const logo = clonedEl.querySelector('img');
             if (logo) {
               logo.style.width = '60px';
@@ -275,7 +305,21 @@ export const FormInscricao: React.FC = () => {
       ];
 
   return (
-    <div className="min-h-screen bg-slate-200 flex flex-col items-center p-2 sm:p-4 md:p-8 font-sans">
+    <div translate="no" className="min-h-screen bg-slate-200 flex flex-col items-center p-2 sm:p-4 md:p-8 font-sans notranslate">
+      
+      {/* BARRA DE ACESSO RÁPIDO AO ADM (SEMPRE VISÍVEL NO TOPO) */}
+      {onOpenAdm && (
+        <div className="w-full max-w-3xl flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={onOpenAdm}
+            className="bg-[#002b66] hover:bg-blue-900 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow transition cursor-pointer"
+          >
+            <Lock className="w-3.5 h-3.5 text-[#ffcc00]" /> Acesso Administrativo
+          </button>
+        </div>
+      )}
+
       <header className="w-full max-w-3xl bg-[#002b66] text-white rounded-t-2xl shadow-2xl border-b-4 border-[#ffcc00] overflow-hidden">
         <div className="bg-[#cc0000] text-white text-center text-[10px] sm:text-xs font-black uppercase py-1 tracking-widest px-2">
           A DISCIPLINA COMO MEIO, O SABER COMO FIM.
@@ -306,414 +350,440 @@ export const FormInscricao: React.FC = () => {
       </header>
 
       <div className="w-full max-w-3xl bg-white p-4 sm:p-8 rounded-b-2xl shadow-2xl border-x border-b border-gray-300">
-        {step <= 4 && (
-          <>
-            <div translate="no" className={`grid gap-1 mb-6 border-b pb-4 ${formData.recebe_beneficio ? 'grid-cols-3' : 'grid-cols-4'}`}>
-              {stepsList.map(item => (
-                <div key={item.stepNum} className="flex flex-col items-center text-center">
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-xs sm:text-sm ${
-                    step === item.stepNum ? 'bg-[#002b66] text-white ring-2 ring-[#ffcc00]' : step > item.stepNum ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
-                    {step > item.stepNum ? '✓' : item.stepNum}
-                  </div>
-                  <span className={`text-[10px] sm:text-xs font-bold mt-1 ${step === item.stepNum ? 'text-[#002b66]' : 'text-gray-400'}`}>
-                    {item.label}
-                  </span>
-                </div>
-              ))}
+        
+        {/* TELA DE INSCRIÇÕES ENCERRADAS (EXIBIDA A PARTIR DE 21/11/2026) */}
+        {encerrado ? (
+          <div className="py-10 px-4 text-center space-y-5">
+            <div className="w-20 h-20 bg-red-100 text-[#cc0000] rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <CalendarX2 className="w-10 h-10" />
+            </div>
+            
+            <div className="space-y-2 max-w-lg mx-auto">
+              <span className="bg-[#cc0000] text-white text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                Prazo Finalizado
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-[#002b66] pt-1">
+                Inscrições Encerradas
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 font-medium leading-relaxed">
+                {CONFIG_INSCRICOES.mensagemPeriodoEncerrado}
+              </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {step === 1 && (
-                <div className="space-y-4">
-                  <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
-                    <User className="w-5 h-5 text-[#cc0000]" /> 1. Dados do Responsável Legal
-                  </h2>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Nome Completo do Responsável *</label>
-                    <input 
-                      type="text" 
-                      name="responsavel_nome" 
-                      required 
-                      value={formData.responsavel_nome} 
-                      onChange={handleChange} 
-                      style={{ padding: '0.75rem 1rem' }}
-                      className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">CPF do Responsável *</label>
-                      <input 
-                        type="text" 
-                        inputMode="numeric"
-                        name="responsavel_cpf" 
-                        required 
-                        placeholder="000.000.000-00" 
-                        value={formData.responsavel_cpf} 
-                        onChange={handleChange} 
-                        style={{ padding: '0.75rem 1rem' }}
-                        className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5 whitespace-nowrap">Telefone (WhatsApp) *</label>
-                      <input 
-                        type="tel" 
-                        inputMode="numeric"
-                        name="responsavel_telefone" 
-                        required 
-                        placeholder="(99) 99999-9999" 
-                        value={formData.responsavel_telefone} 
-                        onChange={handleChange} 
-                        style={{ padding: '0.75rem 1rem' }}
-                        className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Endereço Completo *</label>
-                    <textarea 
-                      name="responsavel_endereco" 
-                      required 
-                      rows={2} 
-                      value={formData.responsavel_endereco} 
-                      onChange={handleChange} 
-                      style={{ padding: '0.75rem 1rem' }}
-                      className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white resize-none" 
-                    />
-                  </div>
-                </div>
-              )}
-
-              {step === 2 && (
-                <div className="space-y-4">
-                  <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
-                    <Heart className="w-5 h-5 text-[#cc0000]" /> 2. Dados Pessoais do Aluno(a)
-                  </h2>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Nome Completo do Aluno(a) *</label>
-                    <input 
-                      type="text" 
-                      name="aluno_nome" 
-                      required 
-                      value={formData.aluno_nome} 
-                      onChange={handleChange} 
-                      style={{ padding: '0.75rem 1rem' }}
-                      className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">CPF do Aluno(a) *</label>
-                      <input 
-                        type="text" 
-                        inputMode="numeric"
-                        name="aluno_cpf" 
-                        required 
-                        placeholder="000.000.000-00" 
-                        value={formData.aluno_cpf} 
-                        onChange={handleChange} 
-                        style={{ padding: '0.75rem 1rem' }}
-                        className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Data de Nascimento *</label>
-                      <input 
-                        type="date" 
-                        name="data_nascimento" 
-                        required 
-                        value={formData.data_nascimento} 
-                        onChange={handleChange} 
-                        style={{ padding: '0.75rem 1rem' }}
-                        className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Série que irá Cursar em 2027 *</label>
-                    <select 
-                      name="serie" 
-                      value={formData.serie} 
-                      onChange={handleChange} 
-                      style={{ padding: '0.75rem 1rem' }}
-                      className="w-full border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm"
-                    >
-                      <option value="6º Ano - Ensino Fundamental">6º Ano do Ensino Fundamental - Anos finais</option>
-                      <option value="7º Ano - Ensino Fundamental">7º Ano do Ensino Fundamental - Anos finais</option>
-                      <option value="8º Ano - Ensino Fundamental">8º Ano do Ensino Fundamental - Anos finais</option>
-                      <option value="9º Ano - Ensino Fundamental">9º Ano do Ensino Fundamental - Anos finais</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="space-y-6">
-                  <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
-                    <Camera className="w-5 h-5 text-[#cc0000]" /> 3. Foto e Documentações do Aluno(a)
-                  </h2>
-
-                  <div className="bg-slate-50 border-2 border-dashed border-[#002b66]/30 p-6 sm:p-8 rounded-2xl text-center shadow-inner">
-                    <div className="flex flex-col items-center gap-4">
-                      {fotoPreview ? (
-                        <div className="relative my-2">
-                          <img src={fotoPreview} alt="Preview Foto" className="w-32 h-32 object-cover rounded-full border-4 border-[#002b66] shadow-lg" />
-                          <span className="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full absolute -bottom-1 left-1/2 -translate-x-1/2 shadow">
-                            Foto Carregada
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="w-20 h-20 bg-[#002b66]/10 rounded-full flex items-center justify-center text-[#002b66] mb-1">
-                          <Camera className="w-10 h-10" />
-                        </div>
-                      )}
-
-                      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md pt-2">
-                        <label className="flex-1 bg-[#cc0000] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer hover:bg-red-700 transition">
-                          <Camera className="w-4 h-4" /> Tirar Selfie / Câmera
-                          <input type="file" accept="image/*" capture="user" onChange={handleFotoChange} className="hidden" />
-                        </label>
-
-                        <label className="flex-1 bg-[#002b66] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer hover:bg-blue-900 transition">
-                          <Upload className="w-4 h-4" /> Selecionar Arquivo
-                          <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
-                        </label>
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl max-w-md mx-auto text-xs text-gray-600">
+              Para mais informações sobre homologação, locais de prova e cronograma oficial, acompanhe os canais de comunicação do <strong>Colégio Militar Tiradentes XIII - Coroatá/MA</strong>.
+            </div>
+          </div>
+        ) : (
+          /* FORMULÁRIO NORMAL ENQUANTO ESTIVER NO PRAZO */
+          <>
+            {step <= 4 && (
+              <>
+                <div className={`grid gap-1 mb-6 border-b pb-4 ${formData.recebe_beneficio ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                  {stepsList.map(item => (
+                    <div key={item.stepNum} className="flex flex-col items-center text-center">
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-xs sm:text-sm ${
+                        step === item.stepNum ? 'bg-[#002b66] text-white ring-2 ring-[#ffcc00]' : step > item.stepNum ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {step > item.stepNum ? '✓' : item.stepNum}
                       </div>
+                      <span className={`text-[10px] sm:text-xs font-bold mt-1 ${step === item.stepNum ? 'text-[#002b66]' : 'text-gray-400'}`}>
+                        {item.label}
+                      </span>
                     </div>
-                  </div>
+                  ))}
+                </div>
 
-                  <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-3">
-                    <p className="font-bold text-xs sm:text-sm text-gray-800">O aluno é Pessoa com Deficiência (PCD)? *</p>
-                    <div className="flex flex-wrap items-center gap-6">
-                      <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
-                        <input type="radio" name="pcd_radio" checked={formData.is_pcd} onChange={() => setFormData(p => ({ ...p, is_pcd: true }))} className="w-4 h-4 text-[#002b66]" /> Sim
-                      </label>
-                      <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
-                        <input type="radio" name="pcd_radio" checked={!formData.is_pcd} onChange={() => setFormData(p => ({ ...p, is_pcd: false, tipo_deficiencia: '' }))} className="w-4 h-4 text-[#002b66]" /> Não
-                      </label>
-                    </div>
-
-                    {formData.is_pcd && (
-                      <div className="pt-2 space-y-3 border-t border-gray-200">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">Informe o tipo de deficiência *</label>
-                          <input 
-                            type="text" 
-                            name="tipo_deficiencia" 
-                            required 
-                            placeholder="Ex: Deficiência Auditiva, Visual, TEA, etc." 
-                            value={formData.tipo_deficiencia} 
-                            onChange={handleChange} 
-                            style={{ padding: '0.75rem 1rem' }}
-                            className="w-full border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#002b66] bg-white" 
-                          />
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-300 p-3.5 rounded-xl text-xs text-blue-950 font-medium leading-relaxed">
-                          <p className="font-bold text-[#002b66] mb-1 flex items-center gap-1.5">
-                            <FileCheck className="w-4 h-4 text-[#002b66]" /> Atenção para a entrega de documentos:
-                          </p>
-                          O interessado em solicitar atendimento especial para realização das provas deverá preencher o requerimento de identificação de deficiência e/ou solicitação de atendimento especial no dia da prova <strong>(ANEXO D)</strong>, indicando claramente quais os recursos especiais necessários e levá-los até o Colégio Militar Tiradentes XIII – Unidade de Coroatá.
-                        </div>
-
-                        <div className="pt-1">
-                          <a 
-                            href={`${import.meta.env.BASE_URL}Anexo D.pdf`} 
-                            download="Anexo_D_Requerimento_PCD.pdf" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="w-full bg-[#002b66] text-white py-3 px-5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-blue-900 transition shadow-md"
-                          >
-                            <Download className="w-4 h-4" /> Baixar Anexo D (Requerimento Atendimento Especializado / PCD)
-                          </a>
-                        </div>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {step === 1 && (
+                    <div className="space-y-4">
+                      <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
+                        <User className="w-5 h-5 text-[#cc0000]" /> 1. Dados do Responsável Legal
+                      </h2>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Nome Completo do Responsável *</label>
+                        <input 
+                          type="text" 
+                          name="responsavel_nome" 
+                          required 
+                          value={formData.responsavel_nome} 
+                          onChange={handleChange} 
+                          style={{ padding: '0.75rem 1rem' }}
+                          className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
+                        />
                       </div>
-                    )}
-                  </div>
-
-                  <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-3">
-                    <p className="font-bold text-xs sm:text-sm text-gray-800">Deseja concorrer à Isenção de Inscrição? *</p>
-                    <div className="flex flex-wrap items-center gap-6">
-                      <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
-                        <input type="radio" name="ben_radio" checked={formData.recebe_beneficio} onChange={() => setFormData(p => ({ ...p, recebe_beneficio: true }))} className="w-4 h-4 text-[#002b66]" /> Sim
-                      </label>
-                      <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
-                        <input type="radio" name="ben_radio" checked={!formData.recebe_beneficio} onChange={() => setFormData(p => ({ ...p, recebe_beneficio: false, nis: '' }))} className="w-4 h-4 text-[#002b66]" /> Não
-                      </label>
-                    </div>
-
-                    {formData.recebe_beneficio && (
-                      <div className="pt-2 space-y-3 border-t border-gray-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">Número de Identificação Social (NIS) *</label>
+                          <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">CPF do Responsável *</label>
                           <input 
                             type="text" 
                             inputMode="numeric"
-                            name="nis" 
+                            name="responsavel_cpf" 
                             required 
-                            placeholder="Informe o NIS do CadÚnico" 
-                            value={formData.nis} 
+                            placeholder="000.000.000-00" 
+                            value={formData.responsavel_cpf} 
                             onChange={handleChange} 
                             style={{ padding: '0.75rem 1rem' }}
-                            className="w-full border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#002b66] bg-white" 
+                            className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
                           />
                         </div>
-
-                        <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-xl text-xs text-amber-900 font-medium leading-relaxed">
-                          <p className="font-bold text-amber-950 mb-1 flex items-center gap-1.5">
-                            <FileCheck className="w-4 h-4 text-amber-700" /> Atenção para a entrega de documentos:
-                          </p>
-                          O interessado em concorrer às vagas de isenção deverá preencher o <strong>REQUERIMENTO DE ISENÇÃO DE TAXA DE INSCRIÇÃO (ANEXO B)</strong> e a <strong>DECLARAÇÃO DE VERACIDADE DE INFORMAÇÕES (ANEXO C)</strong> e levá-los até o Colégio Militar Tiradentes XIII – Unidade de Coroatá.
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                          <a 
-                            href={`${import.meta.env.BASE_URL}Anexo B.pdf`} 
-                            download="Anexo_B_Requerimento_Isencao.pdf" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="bg-[#002b66] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-blue-900 transition shadow-md"
-                          >
-                            <Download className="w-4 h-4" /> Baixar Anexo B (Requerimento)
-                          </a>
-
-                          <a 
-                            href={`${import.meta.env.BASE_URL}Anexo C.pdf`} 
-                            download="Anexo_C_Declaracao_Veracidade.pdf" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="bg-[#002b66] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-blue-900 transition shadow-md"
-                          >
-                            <Download className="w-4 h-4" /> Baixar Anexo C (Declaração)
-                          </a>
+                        <div>
+                          <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5 whitespace-nowrap">Telefone (WhatsApp) *</label>
+                          <input 
+                            type="tel" 
+                            inputMode="numeric"
+                            name="responsavel_telefone" 
+                            required 
+                            placeholder="(99) 99999-9999" 
+                            value={formData.responsavel_telefone} 
+                            onChange={handleChange} 
+                            style={{ padding: '0.75rem 1rem' }}
+                            className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
+                          />
                         </div>
                       </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Endereço Completo *</label>
+                        <textarea 
+                          name="responsavel_endereco" 
+                          required 
+                          rows={2} 
+                          value={formData.responsavel_endereco} 
+                          onChange={handleChange} 
+                          style={{ padding: '0.75rem 1rem' }}
+                          className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white resize-none" 
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 2 && (
+                    <div className="space-y-4">
+                      <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
+                        <Heart className="w-5 h-5 text-[#cc0000]" /> 2. Dados Pessoais do Aluno(a)
+                      </h2>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Nome Completo do Aluno(a) *</label>
+                        <input 
+                          type="text" 
+                          name="aluno_nome" 
+                          required 
+                          value={formData.aluno_nome} 
+                          onChange={handleChange} 
+                          style={{ padding: '0.75rem 1rem' }}
+                          className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">CPF do Aluno(a) *</label>
+                          <input 
+                            type="text" 
+                            inputMode="numeric"
+                            name="aluno_cpf" 
+                            required 
+                            placeholder="000.000.000-00" 
+                            value={formData.aluno_cpf} 
+                            onChange={handleChange} 
+                            style={{ padding: '0.75rem 1rem' }}
+                            className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Data de Nascimento *</label>
+                          <input 
+                            type="date" 
+                            name="data_nascimento" 
+                            required 
+                            value={formData.data_nascimento} 
+                            onChange={handleChange} 
+                            style={{ padding: '0.75rem 1rem' }}
+                            className="w-full border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm bg-white" 
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Série que irá Cursar em 2027 *</label>
+                        <select 
+                          name="serie" 
+                          value={formData.serie} 
+                          onChange={handleChange} 
+                          style={{ padding: '0.75rem 1rem' }}
+                          className="w-full border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-[#002b66] outline-none font-medium shadow-sm"
+                        >
+                          <option value="6º Ano - Ensino Fundamental">6º Ano do Ensino Fundamental - Anos finais</option>
+                          <option value="7º Ano - Ensino Fundamental">7º Ano do Ensino Fundamental - Anos finais</option>
+                          <option value="8º Ano - Ensino Fundamental">8º Ano do Ensino Fundamental - Anos finais</option>
+                          <option value="9º Ano - Ensino Fundamental">9º Ano do Ensino Fundamental - Anos finais</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 3 && (
+                    <div className="space-y-6">
+                      <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
+                        <Camera className="w-5 h-5 text-[#cc0000]" /> 3. Foto e Documentações do Aluno(a)
+                      </h2>
+
+                      <div className="bg-slate-50 border-2 border-dashed border-[#002b66]/30 p-6 sm:p-8 rounded-2xl text-center shadow-inner">
+                        <div className="flex flex-col items-center gap-4">
+                          {fotoPreview ? (
+                            <div className="relative my-2">
+                              <img src={fotoPreview} alt="Preview Foto" className="w-32 h-32 object-cover rounded-full border-4 border-[#002b66] shadow-lg" />
+                              <span className="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full absolute -bottom-1 left-1/2 -translate-x-1/2 shadow">
+                                Foto Carregada
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="w-20 h-20 bg-[#002b66]/10 rounded-full flex items-center justify-center text-[#002b66] mb-1">
+                              <Camera className="w-10 h-10" />
+                            </div>
+                          )}
+
+                          <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md pt-2">
+                            <label className="flex-1 bg-[#cc0000] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer hover:bg-red-700 transition">
+                              <Camera className="w-4 h-4" /> Tirar Selfie / Câmera
+                              <input type="file" accept="image/*" capture="user" onChange={handleFotoChange} className="hidden" />
+                            </label>
+
+                            <label className="flex-1 bg-[#002b66] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer hover:bg-blue-900 transition">
+                              <Upload className="w-4 h-4" /> Selecionar Arquivo
+                              <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-3">
+                        <p className="font-bold text-xs sm:text-sm text-gray-800">O aluno é Pessoa com Deficiência (PCD)? *</p>
+                        <div className="flex flex-wrap items-center gap-6">
+                          <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
+                            <input type="radio" name="pcd_radio" checked={formData.is_pcd} onChange={() => setFormData(p => ({ ...p, is_pcd: true }))} className="w-4 h-4 text-[#002b66]" /> Sim
+                          </label>
+                          <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
+                            <input type="radio" name="pcd_radio" checked={!formData.is_pcd} onChange={() => setFormData(p => ({ ...p, is_pcd: false, tipo_deficiencia: '' }))} className="w-4 h-4 text-[#002b66]" /> Não
+                          </label>
+                        </div>
+
+                        {formData.is_pcd && (
+                          <div className="pt-2 space-y-3 border-t border-gray-200">
+                            <div>
+                              <label className="block text-xs font-bold text-gray-700 mb-1">Informe o tipo de deficiência *</label>
+                              <input 
+                                type="text" 
+                                name="tipo_deficiencia" 
+                                required 
+                                placeholder="Ex: Deficiência Auditiva, Visual, TEA, etc." 
+                                value={formData.tipo_deficiencia} 
+                                onChange={handleChange} 
+                                style={{ padding: '0.75rem 1rem' }}
+                                className="w-full border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#002b66] bg-white" 
+                              />
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-300 p-3.5 rounded-xl text-xs text-blue-950 font-medium leading-relaxed">
+                              <p className="font-bold text-[#002b66] mb-1 flex items-center gap-1.5">
+                                <FileCheck className="w-4 h-4 text-[#002b66]" /> Atenção para a entrega de documentos:
+                              </p>
+                              O interessado em solicitar atendimento especial para realização das provas deverá preencher o requerimento de identificação de deficiência e/ou solicitação de atendimento especial no dia da prova <strong>(ANEXO D)</strong>, indicando claramente quais os recursos especiais necessários e levá-los até o Colégio Militar Tiradentes XIII – Unidade de Coroatá.
+                            </div>
+
+                            <div className="pt-1">
+                              <a 
+                                href={`${import.meta.env.BASE_URL}Anexo D.pdf`} 
+                                download="Anexo_D_Requerimento_PCD.pdf" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="w-full bg-[#002b66] text-white py-3 px-5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-blue-900 transition shadow-md"
+                              >
+                                <Download className="w-4 h-4" /> Baixar Anexo D (Requerimento Atendimento Especializado / PCD)
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-3">
+                        <p className="font-bold text-xs sm:text-sm text-gray-800">Deseja concorrer à Isenção de Inscrição? *</p>
+                        <div className="flex flex-wrap items-center gap-6">
+                          <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
+                            <input type="radio" name="ben_radio" checked={formData.recebe_beneficio} onChange={() => setFormData(p => ({ ...p, recebe_beneficio: true }))} className="w-4 h-4 text-[#002b66]" /> Sim
+                          </label>
+                          <label className="flex items-center gap-2 font-bold text-sm cursor-pointer">
+                            <input type="radio" name="ben_radio" checked={!formData.recebe_beneficio} onChange={() => setFormData(p => ({ ...p, recebe_beneficio: false, nis: '' }))} className="w-4 h-4 text-[#002b66]" /> Não
+                          </label>
+                        </div>
+
+                        {formData.recebe_beneficio && (
+                          <div className="pt-2 space-y-3 border-t border-gray-200">
+                            <div>
+                              <label className="block text-xs font-bold text-gray-700 mb-1">Número de Identificação Social (NIS) *</label>
+                              <input 
+                                type="text" 
+                                inputMode="numeric"
+                                name="nis" 
+                                required 
+                                placeholder="Informe o NIS do CadÚnico" 
+                                value={formData.nis} 
+                                onChange={handleChange} 
+                                style={{ padding: '0.75rem 1rem' }}
+                                className="w-full border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#002b66] bg-white" 
+                              />
+                            </div>
+
+                            <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-xl text-xs text-amber-900 font-medium leading-relaxed">
+                              <p className="font-bold text-amber-950 mb-1 flex items-center gap-1.5">
+                                <FileCheck className="w-4 h-4 text-amber-700" /> Atenção para a entrega de documentos:
+                              </p>
+                              O interessado em concorrer às vagas de isenção deverá preencher o <strong>REQUERIMENTO DE ISENÇÃO DE TAXA DE INSCRIÇÃO (ANEXO B)</strong> e a <strong>DECLARAÇÃO DE VERACIDADE DE INFORMAÇÕES (ANEXO C)</strong> e levá-los até o Colégio Militar Tiradentes XIII – Unidade de Coroatá.
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                              <a 
+                                href={`${import.meta.env.BASE_URL}Anexo B.pdf`} 
+                                download="Anexo_B_Requerimento_Isencao.pdf" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="bg-[#002b66] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-blue-900 transition shadow-md"
+                              >
+                                <Download className="w-4 h-4" /> Baixar Anexo B (Requerimento)
+                              </a>
+
+                              <a 
+                                href={`${import.meta.env.BASE_URL}Anexo C.pdf`} 
+                                download="Anexo_C_Declaracao_Veracidade.pdf" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="bg-[#002b66] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-blue-900 transition shadow-md"
+                              >
+                                <Download className="w-4 h-4" /> Baixar Anexo C (Declaração)
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 4 && !formData.recebe_beneficio && (
+                    <div className="space-y-5">
+                      <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
+                        <CreditCard className="w-5 h-5 text-[#cc0000]" /> 4. Pagamento da Taxa de Inscrição
+                      </h2>
+
+                      <div className="bg-blue-50 border-2 border-[#002b66] p-4 sm:p-6 rounded-2xl text-center space-y-3">
+                        <span className="bg-[#cc0000] text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                          Taxa de Inscrição: R$ 50,00
+                        </span>
+                        <p className="text-xs sm:text-sm text-gray-700 font-semibold pt-1">
+                          Efetue o pagamento de <strong>R$ 50,00</strong> via Pix utilizando a chave CNPJ abaixo:
+                        </p>
+
+                        <div className="flex items-center justify-center gap-2 bg-white p-3 rounded-xl border border-blue-200 shadow-inner max-w-md mx-auto">
+                          <span className="font-mono font-bold text-slate-800 text-sm sm:text-base">03990767000101</span>
+                          <button type="button" onClick={copyPixKey} className="bg-[#002b66] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-blue-900">
+                            {pixCopiado ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                            {pixCopiado ? 'Copiado!' : 'Copiar'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="border-2 border-dashed border-gray-300 p-4 sm:p-6 rounded-2xl bg-gray-50 text-center">
+                        <label className="block text-xs sm:text-sm font-bold text-[#002b66] mb-2">
+                          Anexe o Comprovante do Pix (Foto ou PDF) *
+                        </label>
+                        <label className="inline-flex items-center justify-center gap-2 bg-[#002b66] text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold cursor-pointer shadow-md hover:bg-blue-900">
+                          <FileText className="w-4 h-4" /> Escolher Comprovante
+                          <input type="file" accept="image/*,application/pdf" onChange={handlePixChange} className="hidden" />
+                        </label>
+                        {pixPreview && (
+                          <p className="text-xs font-bold text-emerald-700 mt-2">✓ Arquivo Selecionado: {pixPreview}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-5 border-t">
+                    {step > 1 && (
+                      <button type="button" onClick={() => setStep(s => s - 1)} className="flex items-center gap-1 bg-gray-200 text-gray-800 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-300">
+                        <ChevronLeft className="w-4 h-4" /> Voltar
+                      </button>
+                    )}
+
+                    {step === 3 && formData.recebe_beneficio ? (
+                      <button type="submit" disabled={loading} className="ml-auto flex items-center gap-2 bg-emerald-600 text-white px-6 sm:px-8 py-3 rounded-xl font-black text-xs sm:text-sm hover:bg-emerald-700 shadow-xl cursor-pointer">
+                        {loading ? 'Enviando...' : 'Concluir Inscrição ✓'}
+                      </button>
+                    ) : step < 4 ? (
+                      <button type="button" onClick={handleNextStep} className="ml-auto flex items-center gap-1 bg-[#002b66] text-white px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-blue-900 shadow-md">
+                        Próximo <ChevronRight className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button type="submit" disabled={loading} className="ml-auto flex items-center gap-2 bg-emerald-600 text-white px-6 sm:px-8 py-3 rounded-xl font-black text-xs sm:text-sm hover:bg-emerald-700 shadow-xl cursor-pointer">
+                        {loading ? 'Enviando...' : 'Concluir Inscrição ✓'}
+                      </button>
                     )}
                   </div>
-                </div>
-              )}
+                </form>
+              </>
+            )}
 
-              {step === 4 && !formData.recebe_beneficio && (
-                <div className="space-y-5">
-                  <h2 className="text-base sm:text-lg font-black text-[#002b66] flex items-center gap-2 border-b pb-2">
-                    <CreditCard className="w-5 h-5 text-[#cc0000]" /> 4. Pagamento da Taxa de Inscrição
-                  </h2>
+            {step === 5 && comprovante && (
+              <div className="space-y-6 text-center">
+                <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto" />
+                <h2 className="text-xl sm:text-2xl font-black text-[#002b66]">Inscrição Concluída com Sucesso!</h2>
+                <p className="text-xs sm:text-sm text-gray-600">Baixe ou compartilhe sua Ficha de Inscrição Oficial abaixo.</p>
 
-                  <div className="bg-blue-50 border-2 border-[#002b66] p-4 sm:p-6 rounded-2xl text-center space-y-3">
-                    <span className="bg-[#cc0000] text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
-                      Taxa de Inscrição: R$ 50,00
-                    </span>
-                    <p className="text-xs sm:text-sm text-gray-700 font-semibold pt-1">
-                      Efetue o pagamento de <strong>R$ 50,00</strong> via Pix utilizando a chave CNPJ abaixo:
-                    </p>
-
-                    <div className="flex items-center justify-center gap-2 bg-white p-3 rounded-xl border border-blue-200 shadow-inner max-w-md mx-auto">
-                      <span className="font-mono font-bold text-slate-800 text-sm sm:text-base">03990767000101</span>
-                      <button type="button" onClick={copyPixKey} className="bg-[#002b66] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-blue-900">
-                        {pixCopiado ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                        {pixCopiado ? 'Copiado!' : 'Copiar'}
-                      </button>
+                <div 
+                  id="ficha-comprovante" 
+                  style={{ backgroundColor: '#ffffff', color: '#0d2240', border: '2px solid #002b66' }}
+                  className="p-6 rounded-2xl text-left space-y-6 shadow-sm max-w-xl mx-auto"
+                >
+                  <div style={{ borderBottom: '2px solid #002b66', paddingBottom: '16px' }} className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src={`${import.meta.env.BASE_URL}Logo_CMT_XIII.png`} 
+                        alt="Logo" 
+                        style={{ width: '50px', height: '50px', objectFit: 'contain' }}
+                      />
+                      <div>
+                        <h3 style={{ color: '#002b66', margin: 0, padding: 0 }} className="font-black text-xs sm:text-sm uppercase">COLÉGIO MILITAR TIRADENTES XIII</h3>
+                        <p style={{ color: '#64748b', margin: 0, padding: 0 }} className="text-[10px] font-bold">COROATÁ - MARANHÃO</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '10px' }} className="font-bold">Nº INSCRIÇÃO</span>
+                      <span style={{ color: '#cc0000', fontSize: '18px', lineHeight: '22px' }} className="font-black">#{comprovante.id}</span>
                     </div>
                   </div>
 
-                  <div className="border-2 border-dashed border-gray-300 p-4 sm:p-6 rounded-2xl bg-gray-50 text-center">
-                    <label className="block text-xs sm:text-sm font-bold text-[#002b66] mb-2">
-                      Anexe o Comprovante do Pix (Foto ou PDF) *
-                    </label>
-                    <label className="inline-flex items-center justify-center gap-2 bg-[#002b66] text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold cursor-pointer shadow-md hover:bg-blue-900">
-                      <FileText className="w-4 h-4" /> Escolher Comprovante
-                      <input type="file" accept="image/*,application/pdf" onChange={handlePixChange} className="hidden" />
-                    </label>
-                    {pixPreview && (
-                      <p className="text-xs font-bold text-emerald-700 mt-2">✓ Arquivo Selecionado: {pixPreview}</p>
-                    )}
+                  <div style={{ color: '#0d2240' }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Aluno:</strong> {comprovante.aluno_nome}</div>
+                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>CPF Aluno:</strong> {comprovante.aluno_cpf}</div>
+                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Série Pretendida:</strong> {comprovante.serie}</div>
+                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Responsável:</strong> {comprovante.responsavel_nome}</div>
+                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>CPF Resp.:</strong> {comprovante.responsavel_cpf}</div>
+                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Telefone:</strong> {comprovante.responsavel_telefone}</div>
+                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>PCD:</strong> {comprovante.is_pcd ? `Sim (${comprovante.tipo_deficiencia})` : 'Não'}</div>
+                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Solicitou Isenção:</strong> {comprovante.recebe_beneficio ? `Sim (NIS: ${comprovante.nis})` : 'Não'}</div>
                   </div>
                 </div>
-              )}
 
-              <div className="flex justify-between items-center pt-5 border-t">
-                {step > 1 && (
-                  <button type="button" onClick={() => setStep(s => s - 1)} className="flex items-center gap-1 bg-gray-200 text-gray-800 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-300">
-                    <ChevronLeft className="w-4 h-4" /> Voltar
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                  <button onClick={() => handleGeneratePDF(false)} className="bg-[#002b66] text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:bg-blue-900 cursor-pointer">
+                    <Download className="w-4 h-4" /> Baixar Ficha PDF
                   </button>
-                )}
-
-                {step === 3 && formData.recebe_beneficio ? (
-                  <button type="submit" disabled={loading} className="ml-auto flex items-center gap-2 bg-emerald-600 text-white px-6 sm:px-8 py-3 rounded-xl font-black text-xs sm:text-sm hover:bg-emerald-700 shadow-xl cursor-pointer">
-                    {loading ? 'Enviando...' : 'Concluir Inscrição ✓'}
-                  </button>
-                ) : step < 4 ? (
-                  <button type="button" onClick={handleNextStep} className="ml-auto flex items-center gap-1 bg-[#002b66] text-white px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-blue-900 shadow-md">
-                    Próximo <ChevronRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button type="submit" disabled={loading} className="ml-auto flex items-center gap-2 bg-emerald-600 text-white px-6 sm:px-8 py-3 rounded-xl font-black text-xs sm:text-sm hover:bg-emerald-700 shadow-xl cursor-pointer">
-                    {loading ? 'Enviando...' : 'Concluir Inscrição ✓'}
-                  </button>
-                )}
+                  {typeof navigator.share === 'function' && (
+                    <button onClick={() => handleGeneratePDF(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:bg-emerald-700 cursor-pointer">
+                      <Share2 className="w-4 h-4" /> Compartilhar
+                    </button>
+                  )}
+                </div>
               </div>
-            </form>
+            )}
           </>
         )}
-
-        {/* COMPROVANTE COM REGRAS RÍGIDAS DE DIMENSÃO E ESPAÇAMENTO */}
-        {step === 5 && comprovante && (
-          <div className="space-y-6 text-center">
-            <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto" />
-            <h2 className="text-xl sm:text-2xl font-black text-[#002b66]">Inscrição Concluída com Sucesso!</h2>
-            <p className="text-xs sm:text-sm text-gray-600">Baixe ou compartilhe sua Ficha de Inscrição Oficial abaixo.</p>
-
-            <div 
-              id="ficha-comprovante" 
-              style={{ backgroundColor: '#ffffff', color: '#0d2240', border: '2px solid #002b66' }}
-              className="p-6 rounded-2xl text-left space-y-6 shadow-sm max-w-xl mx-auto"
-            >
-              {/* CABEÇALHO DO COMPROVANTE */}
-              <div style={{ borderBottom: '2px solid #002b66', paddingBottom: '16px' }} className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <img 
-                    src={`${import.meta.env.BASE_URL}Logo_CMT_XIII.png`} 
-                    alt="Logo" 
-                    style={{ width: '50px', height: '50px', objectFit: 'contain' }}
-                  />
-                  <div>
-                    <h3 style={{ color: '#002b66', margin: 0, padding: 0 }} className="font-black text-xs sm:text-sm uppercase">COLÉGIO MILITAR TIRADENTES XIII</h3>
-                    <p style={{ color: '#64748b', margin: 0, padding: 0 }} className="text-[10px] font-bold">COROATÁ - MARANHÃO</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span style={{ color: '#64748b', display: 'block', fontSize: '10px' }} className="font-bold">Nº INSCRIÇÃO</span>
-                  <span style={{ color: '#cc0000', fontSize: '18px', lineHeight: '22px' }} className="font-black">#{comprovante.id}</span>
-                </div>
-              </div>
-
-              {/* DADOS DA INSCRICAO */}
-              <div style={{ color: '#0d2240' }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Aluno:</strong> {comprovante.aluno_nome}</div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>CPF Aluno:</strong> {comprovante.aluno_cpf}</div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Série Pretendida:</strong> {comprovante.serie}</div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Responsável:</strong> {comprovante.responsavel_nome}</div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>CPF Resp.:</strong> {comprovante.responsavel_cpf}</div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Telefone:</strong> {comprovante.responsavel_telefone}</div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>PCD:</strong> {comprovante.is_pcd ? `Sim (${comprovante.tipo_deficiencia})` : 'Não'}</div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200"><strong>Solicitou Isenção:</strong> {comprovante.recebe_beneficio ? `Sim (NIS: ${comprovante.nis})` : 'Não'}</div>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-              <button onClick={() => handleGeneratePDF(false)} className="bg-[#002b66] text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:bg-blue-900 cursor-pointer">
-                <Download className="w-4 h-4" /> Baixar Ficha PDF
-              </button>
-              {typeof navigator.share === 'function' && (
-                <button onClick={() => handleGeneratePDF(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:bg-emerald-700 cursor-pointer">
-                  <Share2 className="w-4 h-4" /> Compartilhar
-                </button>
-              )}
-            </div>
-          </div>
-        )} 
       </div>
     </div>
   );
